@@ -1,3 +1,16 @@
+(Forked from https://github.com/docker-library/mysql)
+
+This version of the standard docker mysql image includes support for importing a db dump from an S3 bucket. Just pass the following environment values at runtime:
+
+```
+AWS_ACCESS_KEY_ID=XXXXXX
+AWS_SECRET_ACCESS_KEY=YYYYY
+$MYSQL_S3_DUMP=s3://my-bucket/prefix/mydump.sql.gz
+```
+
+
+
+
 # https://github.com/docker-library/mysql
 
 ## Maintained by: [the Docker Community and the MySQL Team](https://github.com/docker-library/mysql)
