@@ -185,6 +185,13 @@ if [ "$1" = 'mysqld' -a -z "$wantHelp" ]; then
 			echo 'FLUSH PRIVILEGES ;' | "${mysql[@]}"
 		fi
 
+		echo Pulling $MYSQL_S3_DUMP...
+		file_env 'MYSQL_S3_DUMP'
+		if [[ -n $MYSQL_S3_DUMP ]] && [[ $MYSQL_S3_DUMP =~ "s3://" ]] ; then
+			BASENAME=$(basename $MYSQL_S3_DUMP)
+			aws s3 cp ${MYSQL_S3_DUMP} /docker-entrypoint-initdb.d/${BASENAME}
+		fi
+
 		echo
 		for f in /docker-entrypoint-initdb.d/*; do
 			process_init_file "$f" "${mysql[@]}"
