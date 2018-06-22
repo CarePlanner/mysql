@@ -86,6 +86,15 @@ if [ "$1" = 'mysqld' -a -z "$wantHelp" -a "$(id -u)" = '0' ]; then
 	DATADIR="$(_get_config 'datadir' "$@")"
 	mkdir -p "$DATADIR"
 	chown -R mysql:mysql "$DATADIR"
+
+  #Do this here while we're still running as root
+	echo Pulling $MYSQL_S3_DUMP...
+	file_env 'MYSQL_S3_DUMP'
+	if [[ -n $MYSQL_S3_DUMP ]] && [[ $MYSQL_S3_DUMP =~ "s3://" ]] ; then
+		BASENAME=$(basename $MYSQL_S3_DUMP)
+		aws s3 cp ${MYSQL_S3_DUMP} /docker-entrypoint-initdb.d/${BASENAME}
+	fi
+
 	exec gosu mysql "$BASH_SOURCE" "$@"
 fi
 
@@ -188,13 +197,6 @@ if [ "$1" = 'mysqld' -a -z "$wantHelp" ]; then
 			fi
 
 			echo 'FLUSH PRIVILEGES ;' | "${mysql[@]}"
-		fi
-
-		echo Pulling $MYSQL_S3_DUMP...
-		file_env 'MYSQL_S3_DUMP'
-		if [[ -n $MYSQL_S3_DUMP ]] && [[ $MYSQL_S3_DUMP =~ "s3://" ]] ; then
-			BASENAME=$(basename $MYSQL_S3_DUMP)
-			aws s3 cp ${MYSQL_S3_DUMP} /docker-entrypoint-initdb.d/${BASENAME} 
 		fi
 
 		echo
