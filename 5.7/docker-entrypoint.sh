@@ -80,6 +80,26 @@ _get_config() {
 	"$@" --verbose --help --log-bin-index="$(mktemp -u)" 2>/dev/null | awk '$1 == "'"$conf"'" { print $2; exit }'
 }
 
+_s3_import() {
+	file_env 'MYSQL_S3_DUMP'
+	if [[ -n $MYSQL_S3_DUMP ]] && [[ $MYSQL_S3_DUMP =~ "s3://" ]] ; then
+		echo "Pulling $MYSQL_S3_DUMP..."
+		DUMPFILE=$(basename $MYSQL_S3_DUMP)
+		aws s3 cp ${MYSQL_S3_DUMP} /docker-entrypoint-initdb.d/${DUMPFILE}
+	fi
+	file_env 'ENCRYPTED_MYSQL_S3_DUMP'
+	if [[ -n $ENCRYPTED_MYSQL_S3_DUMP ]] && [[ $ENCRYPTED_MYSQL_S3_DUMP =~ "s3://" ]] ; then
+		echo "Pulling and decrypting $ENCRYPTED_MYSQL_S3_DUMP..."
+		DUMPFILE=$(basename $ENCRYPTED_MYSQL_S3_DUMP)
+		FULLPREFIX=$(dirname $ENCRYPTED_MYSQL_S3_DUMP)
+		KEYFILE="$(echo $DUMPFILE | awk -F. '{print $1}').key.kms"
+		aws s3 cp ${ENCRYPTED_MYSQL_S3_DUMP} /docker-entrypoint-initdb.d/${DUMPFILE}
+		aws s3 cp ${FULLPREFIX}/${KEYFILE} /docker-entrypoint-initdb.d/${KEYFILE}
+		gpg --batch --passphrase-file <(aws kms decrypt --ciphertext-blob fileb://<(cat /docker-entrypoint-initdb.d/${KEYFILE} | base64 -d) --output text --query Plaintext | base64 -d) -d /docker-entrypoint-initdb.d/${DUMPFILE} | gunzip >/docker-entrypoint-initdb.d/dump.sql
+		rm -f /docker-entrypoint-initdb.d/${DUMPFILE} /docker-entrypoint-initdb.d/${KEYFILE}
+	fi
+}
+
 # allow the container to be started with `--user`
 if [ "$1" = 'mysqld' -a -z "$wantHelp" -a "$(id -u)" = '0' ]; then
 	_check_config "$@"
@@ -87,13 +107,8 @@ if [ "$1" = 'mysqld' -a -z "$wantHelp" -a "$(id -u)" = '0' ]; then
 	mkdir -p "$DATADIR"
 	chown -R mysql:mysql "$DATADIR"
 
-  #Do this here while we're still running as root
-	echo Pulling $MYSQL_S3_DUMP...
-	file_env 'MYSQL_S3_DUMP'
-	if [[ -n $MYSQL_S3_DUMP ]] && [[ $MYSQL_S3_DUMP =~ "s3://" ]] ; then
-		BASENAME=$(basename $MYSQL_S3_DUMP)
-		aws s3 cp ${MYSQL_S3_DUMP} /docker-entrypoint-initdb.d/${BASENAME}
-	fi
+	#Do this here while we're still running as root
+	_s3_import
 
 	exec gosu mysql "$BASH_SOURCE" "$@"
 fi

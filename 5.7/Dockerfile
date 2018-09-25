@@ -79,6 +79,7 @@ RUN { \
 VOLUME /var/lib/mysql
 
 COPY docker-entrypoint.sh /usr/local/bin/
+COPY custom/*.cnf /etc/mysql/conf.d/
 RUN ln -s usr/local/bin/docker-entrypoint.sh /entrypoint.sh # backwards compat
 ENTRYPOINT ["docker-entrypoint.sh"]
 
