@@ -209,6 +209,15 @@ if [ "$1" = 'mysqld' -a -z "$wantHelp" ]; then
 			echo 'FLUSH PRIVILEGES ;' | "${mysql[@]}"
 		fi
 
+                file_env 'DATADOG_PASSWORD'
+                if [ "$DATADOG_PASSWORD" ]; then
+                        echo "CREATE USER 'datadog'@'%' IDENTIFIED BY '$DATADOG_PASSWORD' ;" | "${mysql[@]}"
+                        echo "GRANT REPLICATION CLIENT ON *.* TO 'datadog'@'%' WITH MAX_USER_CONNECTIONS 5;" | "${mysql[@]}"
+                        echo "GRANT PROCESS ON *.* TO 'datadog'@'%' ;" | "${mysql[@]}"
+                        echo "GRANT SELECT ON performance_schema.* TO 'datadog'@'%';" | "${mysql[@]}"
+                        echo 'FLUSH PRIVILEGES ;' | "${mysql[@]}"
+                fi
+
 		echo
 		for f in /docker-entrypoint-initdb.d/*; do
 			process_init_file "$f" "${mysql[@]}"

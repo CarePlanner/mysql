@@ -8,7 +8,11 @@ AWS_SECRET_ACCESS_KEY=YYYYY
 $MYSQL_S3_DUMP=s3://my-bucket/prefix/mydump.sql.gz
 ```
 
+It also supports adding a user and privileges for datadog. Just set the password as an environment variable (the same password must be given to the datadog agent):
 
+```
+DATADOG_PASSWORD=ZZZZZZ
+```
 
 
 # https://github.com/docker-library/mysql
